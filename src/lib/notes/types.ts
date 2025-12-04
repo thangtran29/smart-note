@@ -1,0 +1,48 @@
+// Editor.js block structure
+export interface EditorJSBlock {
+  id: string;
+  type: 'paragraph' | 'header' | 'list' | 'code' | 'quote';
+  data: Record<string, unknown>;
+}
+
+// Editor.js output structure
+export interface EditorJSContent {
+  time: number;
+  blocks: EditorJSBlock[];
+  version: string;
+}
+
+// Note entity
+export interface Note {
+  id: string;
+  user_id: string;
+  title: string;
+  content: EditorJSContent | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// For creating a new note
+export interface CreateNoteInput {
+  title?: string;
+  content?: EditorJSContent;
+}
+
+// For updating an existing note
+export interface UpdateNoteInput {
+  title?: string;
+  content?: EditorJSContent;
+}
+
+// Note with computed preview for list display
+export interface NoteListItem {
+  id: string;
+  title: string;
+  preview: string;
+  updated_at: string;
+}
+
+// Action result types
+export type ActionResult<T> =
+  | ({ success: true } & T)
+  | { success: false; error: string };
