@@ -1,13 +1,10 @@
-import { encode } from 'gpt-3-encoder';
-import type { EditorJSContent } from '@/lib/notes/types';
-import type { NoteSearchResult } from '@/lib/search/types';
-import type { SimplifiedNote } from './types';
-
 /**
- * Count tokens in a text string using GPT-3 encoder
+ * Count tokens in a text string using GPT-3 encoder (with dynamic import)
  */
-export function countTokens(text: string): number {
+export async function countTokens(text: string): Promise<number> {
   try {
+    // Dynamic import to avoid build-time issues
+    const { encode } = await import('gpt-3-encoder');
     const tokens = encode(text);
     return tokens.length;
   } catch (error) {
@@ -35,11 +32,11 @@ export function extractNoteText(content: EditorJSContent | null): string {
 /**
  * Calculate token usage for a collection of notes
  */
-export function calculateTokenUsage(
+export async function calculateTokenUsage(
   notes: NoteSearchResult[],
   query: string,
   promptTemplate: string
-): {
+): Promise<{
   totalTokens: number;
   breakdown: {
     prompt: number;
@@ -47,16 +44,16 @@ export function calculateTokenUsage(
     notes: number;
     context: number;
   };
-} {
-  const queryTokens = countTokens(query);
-  const promptTokens = countTokens(promptTemplate);
+}> {
+  const queryTokens = await countTokens(query);
+  const promptTokens = await countTokens(promptTemplate);
 
   // Calculate notes content tokens
   let notesTokens = 0;
   for (const note of notes) {
     const noteText = extractNoteText(note.content);
     const formattedNote = `Note: ${note.title}\n${noteText}`;
-    notesTokens += countTokens(formattedNote);
+    notesTokens += await countTokens(formattedNote);
   }
 
   const contextTokens = promptTokens + queryTokens + notesTokens;
@@ -76,15 +73,15 @@ export function calculateTokenUsage(
 /**
  * Truncate notes to fit within token limit
  */
-export function truncateNotesForTokenLimit(
+export async function truncateNotesForTokenLimit(
   notes: SimplifiedNote[],
   maxTokens: number = 6000
-): {
+): Promise<{
   notes: SimplifiedNote[];
   truncated: boolean;
   tokenCount: number;
   removedCount: number;
-} {
+}> {
   if (notes.length === 0) {
     return { notes: [], truncated: false, tokenCount: 0, removedCount: 0 };
   }
@@ -98,7 +95,7 @@ export function truncateNotesForTokenLimit(
 
   for (const note of sortedNotes) {
     const formattedNote = `Note: ${note.title}\n${note.content}`;
-    const noteTokens = countTokens(formattedNote);
+    const noteTokens = await countTokens(formattedNote);
 
     if (totalTokens + noteTokens <= maxTokens) {
       selectedNotes.push(note);
@@ -118,10 +115,11 @@ export function truncateNotesForTokenLimit(
       .slice(0, Math.min(5, notes.length));
 
     selectedNotes = recentNotes;
-    totalTokens = recentNotes.reduce((sum, note) => {
+    totalTokens = 0;
+    for (const note of recentNotes) {
       const formattedNote = `Note: ${note.title}\n${note.content}`;
-      return sum + countTokens(formattedNote);
-    }, 0);
+      totalTokens += await countTokens(formattedNote);
+    }
   }
 
   return {

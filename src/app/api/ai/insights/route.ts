@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
     }));
 
     // Check token limits and truncate if needed
-    const truncationResult = truncateNotesForTokenLimit(notesForAI, 6000);
+    const truncationResult = await truncateNotesForTokenLimit(notesForAI, 6000);
 
     // Format context for AI
     const context = formatNotesForAI(truncationResult.notes);
