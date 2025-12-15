@@ -61,8 +61,8 @@ export function SignupForm() {
         return;
       }
 
-      // Redirect to dashboard on success
-      router.push('/dashboard');
+      // Redirect to notes on success
+      router.push('/notes');
       router.refresh();
     } catch {
       setError('An unexpected error occurred. Please try again.');

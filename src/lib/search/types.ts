@@ -45,6 +45,7 @@ export interface NoteSearchResult {
   content: EditorJSContent | null;
   created_at: string;
   updated_at: string;
+  expires_at?: string | null;
   tags?: Array<{ id: string; name: string; color?: string }>; // Associated tags
   searchRank?: number;      // FTS relevance score (0-1)
   matchedFields?: string[]; // Which fields matched ('title' | 'content')

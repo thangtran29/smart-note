@@ -1,3 +1,7 @@
+import type { EditorJSContent } from '@/lib/notes/types';
+import type { NoteSearchResult } from '@/lib/search/types';
+import type { SimplifiedNote } from './types';
+
 /**
  * Count tokens in a text string using GPT-3 encoder (with dynamic import)
  */

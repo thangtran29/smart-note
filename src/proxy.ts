@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { updateSession } from '@/lib/supabase/middleware';
 
 // Routes that require authentication
-const protectedRoutes = ['/dashboard', '/notes', '/settings'];
+const protectedRoutes = ['/notes', '/settings', '/insights'];
 
 // Routes that should redirect to dashboard if already authenticated
 const authRoutes = ['/login', '/signup', '/forgot-password'];
@@ -29,9 +29,9 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Redirect authenticated users from auth routes to dashboard
+  // Redirect authenticated users from auth routes to notes
   if (isAuthRoute && user) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+    return NextResponse.redirect(new URL('/notes', request.url));
   }
 
   return supabaseResponse;

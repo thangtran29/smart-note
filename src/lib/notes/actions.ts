@@ -8,11 +8,13 @@ import type { Note } from '@/lib/supabase/types';
 interface CreateNoteInput {
   title?: string;
   content?: EditorJSContent;
+  expires_at?: Date | string | null;
 }
 
 interface UpdateNoteInput {
   title?: string;
   content?: EditorJSContent;
+  expires_at?: Date | string | null;
 }
 
 type CreateNoteResult = { success: true; note: Note } | { success: false; error: string };
@@ -27,11 +29,28 @@ export async function createNote(input: CreateNoteInput): Promise<CreateNoteResu
     return { success: false, error: 'Not authenticated' };
   }
 
-  const insertData = {
+  const insertData: {
+    user_id: string;
+    title: string;
+    content: EditorJSContent;
+    expires_at?: string | null;
+  } = {
     user_id: user.id,
     title: input.title ?? '',
     content: input.content ?? { time: 0, blocks: [], version: '2.28.0' },
   };
+
+  // Handle expiration date - convert Date to ISO string if provided
+  if (input.expires_at !== undefined) {
+    if (input.expires_at === null) {
+      insertData.expires_at = null;
+    } else {
+      const expiresAt = typeof input.expires_at === 'string' 
+        ? new Date(input.expires_at) 
+        : input.expires_at;
+      insertData.expires_at = expiresAt.toISOString();
+    }
+  }
 
   const { data, error } = await supabase
     .from('notes')
@@ -56,9 +75,25 @@ export async function updateNote(id: string, input: UpdateNoteInput): Promise<Up
     return { success: false, error: 'Not authenticated' };
   }
 
-  const updateData: { title?: string; content?: EditorJSContent } = {};
+  const updateData: {
+    title?: string;
+    content?: EditorJSContent;
+    expires_at?: string | null;
+  } = {};
   if (input.title !== undefined) updateData.title = input.title;
   if (input.content !== undefined) updateData.content = input.content;
+  
+  // Handle expiration date - convert Date to ISO string if provided
+  if (input.expires_at !== undefined) {
+    if (input.expires_at === null) {
+      updateData.expires_at = null;
+    } else {
+      const expiresAt = typeof input.expires_at === 'string' 
+        ? new Date(input.expires_at) 
+        : input.expires_at;
+      updateData.expires_at = expiresAt.toISOString();
+    }
+  }
 
   const { data, error } = await supabase
     .from('notes')
@@ -103,9 +138,10 @@ export async function deleteNote(id: string): Promise<DeleteNoteResult> {
 
 // Tag operations for notes
 export async function createNoteWithTags(
-  input: CreateNoteInput & { tagIds?: string[] }
+  input: CreateNoteInput & { tagIds?: string[]; expires_at?: Date | string | null }
 ): Promise<ActionResult<{ note: Note }>> {
-  const result = await createNote(input);
+  const { tagIds, expires_at, ...noteInput } = input;
+  const result = await createNote({ ...noteInput, expires_at });
 
   if (result.success && input.tagIds && input.tagIds.length > 0) {
     // Import tag actions here to avoid circular dependency
@@ -118,9 +154,10 @@ export async function createNoteWithTags(
 
 export async function updateNoteWithTags(
   id: string,
-  input: UpdateNoteInput & { tagIds?: string[] }
+  input: UpdateNoteInput & { tagIds?: string[]; expires_at?: Date | string | null }
 ): Promise<ActionResult<{ note: Note }>> {
-  const result = await updateNote(id, input);
+  const { tagIds, expires_at, ...noteInput } = input;
+  const result = await updateNote(id, { ...noteInput, expires_at });
 
   if (result.success && input.tagIds !== undefined) {
     // Import tag actions here to avoid circular dependency

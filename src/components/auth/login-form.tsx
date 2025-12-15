@@ -18,7 +18,7 @@ export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
 
   // Get redirect URL from query params
-  const redirectTo = searchParams.get('redirectTo') ?? '/dashboard';
+  const redirectTo = searchParams.get('redirectTo') ?? '/notes';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

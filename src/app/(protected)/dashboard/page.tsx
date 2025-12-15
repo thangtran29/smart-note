@@ -1,12 +1,12 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
-import { LogoutButton } from '@/components/auth/logout-button';
+import { AppHeader } from '@/components/layout/app-header';
 import { getTags } from '@/lib/tags/queries';
 import { TagBadge } from '@/components/tags/tag-badge';
 import { getNotes } from '@/lib/notes/queries';
 import { Button } from '@/components/ui/button';
 import { SimpleNoteCard } from '@/components/notes/note-card';
-import { Plus, FileText, ArrowRight, Tag, Sparkles } from 'lucide-react';
+import { Plus, FileText, ArrowRight, Tag } from 'lucide-react';
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -18,28 +18,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <header className="bg-white dark:bg-gray-800 shadow">
-        <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
-            Smart Notes
-          </h1>
-          <div className="flex items-center gap-4">
-            <Link href="/notes">
-              <Button variant="outline" size="sm">
-                <FileText className="h-4 w-4 mr-2" />
-                My Notes
-              </Button>
-            </Link>
-            <Link href="/insights">
-              <Button variant="outline" size="sm">
-                <Sparkles className="h-4 w-4 mr-2" />
-                AI Insights
-              </Button>
-            </Link>
-            <LogoutButton />
-          </div>
-        </div>
-      </header>
+      <AppHeader currentPage="notes" />
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
@@ -54,12 +33,20 @@ export default async function DashboardPage() {
               <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
                 Recent Notes
               </h3>
-              <Link href="/notes">
-                <Button variant="ghost" size="sm">
-                  View all
-                  <ArrowRight className="h-4 w-4 ml-2" />
-                </Button>
-              </Link>
+              <div className="flex items-center gap-2">
+                <Link href="/notes/new">
+                  <Button size="sm">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create new note
+                  </Button>
+                </Link>
+                <Link href="/notes">
+                  <Button variant="ghost" size="sm">
+                    View all
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                </Link>
+              </div>
             </div>
 
             {recentNotes.length === 0 ? (
@@ -95,7 +82,7 @@ export default async function DashboardPage() {
               <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
                 Recent Tags
               </h3>
-              <Link href="/tags">
+              <Link href="/settings/tags">
                 <Button variant="ghost" size="sm">
                   Manage tags
                   <ArrowRight className="h-4 w-4 ml-2" />
@@ -113,7 +100,7 @@ export default async function DashboardPage() {
                   Create tags to organize your notes.
                 </p>
                 <div className="mt-4">
-                  <Link href="/tags">
+                  <Link href="/settings/tags">
                     <Button>
                       <Tag className="h-4 w-4 mr-2" />
                       Create your first tag
@@ -135,7 +122,7 @@ export default async function DashboardPage() {
                     </Link>
                   ))}
                   {tags.length > 5 && (
-                    <Link href="/tags">
+                    <Link href="/settings/tags">
                       <Button variant="ghost" size="sm" className="text-primary">
                         +{tags.length - 5} more
                       </Button>

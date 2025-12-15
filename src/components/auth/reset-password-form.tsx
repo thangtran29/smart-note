@@ -58,9 +58,9 @@ export function ResetPasswordForm() {
 
       setSuccess(true);
       
-      // Redirect to dashboard after a short delay
+      // Redirect to notes after a short delay
       setTimeout(() => {
-        router.push('/dashboard');
+        router.push('/notes');
         router.refresh();
       }, 2000);
     } catch {

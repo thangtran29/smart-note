@@ -2,17 +2,71 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
+1. Create a `.env` file in the root directory with your environment variables:
+```env
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+OPENAI_API_KEY=your_openai_api_key
+```
+
+### Running the Development Server
+
+You can run the development server in several ways:
+
+**Option 1: Using npm script (recommended)**
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
+
+**Option 2: Using npm script with explicit .env loading**
+```bash
+npm run dev:env
+```
+
+**Option 3: Using shell scripts (loads .env automatically)**
+
+For Linux/Mac/Git Bash:
+```bash
+chmod +x scripts/dev.sh
+./scripts/dev.sh
+```
+
+For Windows PowerShell:
+```powershell
+.\scripts\dev.ps1
+```
+
+For Windows CMD:
+```cmd
+scripts\dev.bat
+```
+
+### Verify Environment Variables
+
+To check if your .env variables are loaded correctly:
+
+**Using npm script:**
+```bash
+npm run check-env
+```
+
+**Using PowerShell:**
+```powershell
+.\scripts\check-env.ps1
+```
+
+**Using Bash:**
+```bash
+chmod +x scripts/check-env.sh
+./scripts/check-env.sh
+```
+
+The verification script will:
+- Show all variables in your .env file
+- Display which variables are loaded in the environment
+- Hide sensitive values (keys, secrets, passwords) for security
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 

@@ -38,7 +38,7 @@ export async function createTag(input: CreateTagInput): Promise<CreateTagResult>
     return { success: false, error: 'Failed to create tag' };
   }
 
-  revalidatePath('/tags');
+  revalidatePath('/settings/tags');
   return { success: true, tag: data };
 }
 
@@ -69,7 +69,7 @@ export async function updateTag(
     return { success: false, error: 'Failed to update tag' };
   }
 
-  revalidatePath('/tags');
+  revalidatePath('/settings/tags');
   return { success: true, tag: data };
 }
 
@@ -102,7 +102,7 @@ export async function deleteTag(id: string): Promise<DeleteTagResult> {
     return { success: false, error: 'Failed to delete tag' };
   }
 
-  revalidatePath('/tags');
+  revalidatePath('/settings/tags');
   return { success: true };
 }
 

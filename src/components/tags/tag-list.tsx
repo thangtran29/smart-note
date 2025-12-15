@@ -91,7 +91,7 @@ export function TagList({ selectedTagIds = [], onTagSelect, className }: TagList
               variant="link"
               size="sm"
               className="mt-2 h-auto p-0"
-              onClick={() => router.push('/tags')}
+              onClick={() => router.push('/settings/tags')}
             >
               Create your first tag
             </Button>
@@ -133,7 +133,7 @@ export function TagList({ selectedTagIds = [], onTagSelect, className }: TagList
               variant="outline"
               size="sm"
               className="w-full"
-              onClick={() => router.push('/tags')}
+              onClick={() => router.push('/settings/tags')}
             >
               Manage Tags
             </Button>

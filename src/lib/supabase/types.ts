@@ -53,6 +53,7 @@ export interface Database {
           content: EditorJSContent | null;
           created_at: string;
           updated_at: string;
+          expires_at: string | null;
         };
         Insert: {
           id?: string;
@@ -61,11 +62,13 @@ export interface Database {
           content?: EditorJSContent | null;
           created_at?: string;
           updated_at?: string;
+          expires_at?: string | null;
         };
         Update: {
           title?: string;
           content?: EditorJSContent | null;
           updated_at?: string;
+          expires_at?: string | null;
         };
         Relationships: [];
       };

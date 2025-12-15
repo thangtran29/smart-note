@@ -9,6 +9,7 @@ import { NoteBreadcrumb } from '@/components/notes/note-breadcrumb';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { createNoteWithTags } from '@/lib/notes/actions';
 import { TagSelector } from '@/components/tags/tag-selector';
+import { NoteExpirationSelector } from '@/components/notes/note-expiration-selector';
 import type { EditorJSContent } from '@/lib/notes/types';
 
 const NoteEditor = dynamic(
@@ -21,6 +22,7 @@ export default function NewNotePage() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState<EditorJSContent | null>(null);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [expiresAt, setExpiresAt] = useState<Date | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,6 +39,7 @@ export default function NewNotePage() {
         title: title || undefined,
         content: content || undefined,
         tagIds: selectedTagIds,
+        expires_at: expiresAt,
       });
 
       if (result.success) {
@@ -80,6 +83,13 @@ export default function NewNotePage() {
               selectedTagIds={selectedTagIds}
               onChange={setSelectedTagIds}
               placeholder="Select tags for your note..."
+            />
+          </div>
+
+          <div className="max-w-md">
+            <NoteExpirationSelector
+              expiresAt={expiresAt}
+              onChange={setExpiresAt}
             />
           </div>
 

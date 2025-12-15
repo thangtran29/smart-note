@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatDateRangeForDisplay } from '@/lib/search/utils';
 import type { DateFilterState } from '@/lib/search/types';
+import type { TagWithCount } from '@/lib/tags/types';
 
 interface ActiveFilter {
   type: 'query' | 'date' | 'tag';
@@ -18,6 +19,7 @@ interface FilterBarProps {
   searchQuery: string;
   dateFilter: DateFilterState;
   selectedTagIds: string[];
+  tags: TagWithCount[];
   onClearSearch: () => void;
   onClearDateFilter: () => void;
   onClearTagFilter: (tagId: string) => void;
@@ -29,12 +31,15 @@ export function FilterBar({
   searchQuery,
   dateFilter,
   selectedTagIds,
+  tags,
   onClearSearch,
   onClearDateFilter,
   onClearTagFilter,
   onClearAllFilters,
   disabled = false,
 }: FilterBarProps) {
+  // Create a map of tag ID to tag name for quick lookup
+  const tagMap = new Map(tags.map(tag => [tag.id, tag.name]));
   // Build active filters list
   const activeFilters: ActiveFilter[] = [];
 
@@ -86,12 +91,13 @@ export function FilterBar({
     }
   }
 
-  // Add tag filters (placeholder for now)
+  // Add tag filters with tag names
   selectedTagIds.forEach(tagId => {
+    const tagName = tagMap.get(tagId) || tagId; // Fallback to ID if tag not found
     activeFilters.push({
       type: 'tag',
       label: 'Tag',
-      value: tagId, // This should be tag name, but we only have IDs for now
+      value: tagName,
       onRemove: () => onClearTagFilter(tagId),
     });
   });

@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:env": "dotenv -e .env -- next dev",
+    "check-env": "node scripts/check-env.js",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
@@ -42,6 +44,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
+    "dotenv-cli": "^11.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.0.7",
     "tailwindcss": "^4",

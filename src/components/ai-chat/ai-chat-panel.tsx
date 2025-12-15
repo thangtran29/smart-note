@@ -14,9 +14,12 @@ import type { ChatMessage, AIConversation } from '@/lib/ai-chat/types';
 interface AIChatPanelProps {
   noteId: string;
   onClose: () => void;
+  onInsertMessage?: (message: string) => void;
+  onConversationCreated?: () => void;
+  onHistoryCleared?: () => void;
 }
 
-export function AIChatPanel({ noteId, onClose }: AIChatPanelProps) {
+export function AIChatPanel({ noteId, onClose, onInsertMessage, onConversationCreated, onHistoryCleared }: AIChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [isSending, setIsSending] = useState(false);
@@ -92,6 +95,10 @@ export function AIChatPanel({ noteId, onClose }: AIChatPanelProps) {
           timestamp: response.conversation.createdAt,
         };
         setMessages(prev => [...prev, aiMessage]);
+        // Notify parent that a conversation was created
+        if (onConversationCreated) {
+          onConversationCreated();
+        }
       } else {
         // Handle error
         setError(response.error || 'Failed to send message');
@@ -116,6 +123,10 @@ export function AIChatPanel({ noteId, onClose }: AIChatPanelProps) {
       setError(null);
       await clearConversationHistory(noteId);
       setMessages([]);
+      // Notify parent that conversation history was cleared
+      if (onHistoryCleared) {
+        onHistoryCleared();
+      }
     } catch (err) {
       console.error('Failed to clear conversation history:', err);
       setError('Failed to clear conversation history');
@@ -196,7 +207,15 @@ export function AIChatPanel({ noteId, onClose }: AIChatPanelProps) {
             </div>
           ) : (
             messages.map((message, index) => (
-              <ChatMessageComponent key={index} message={message} />
+              <ChatMessageComponent 
+                key={index} 
+                message={message} 
+                onInsertMessage={message.role === 'assistant' ? onInsertMessage : undefined}
+                onDeleteMessage={message.role === 'assistant' ? () => {
+                  // Remove the message from local state
+                  setMessages(prev => prev.filter((_, i) => i !== index));
+                } : undefined}
+              />
             ))
           )}
 

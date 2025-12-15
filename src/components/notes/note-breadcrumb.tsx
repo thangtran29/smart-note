@@ -14,7 +14,7 @@ export function NoteBreadcrumb({ items }: NoteBreadcrumbProps) {
   return (
     <nav className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400 mb-4">
       <Link 
-        href="/dashboard" 
+        href="/notes" 
         className="hover:text-gray-700 dark:hover:text-gray-200 flex items-center"
       >
         <Home className="h-4 w-4" />

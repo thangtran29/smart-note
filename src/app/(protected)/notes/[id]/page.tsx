@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useDebouncedCallback } from 'use-debounce';
@@ -13,6 +13,7 @@ import { DeleteNoteDialog } from '@/components/notes/delete-note-dialog';
 import { NoteBreadcrumb } from '@/components/notes/note-breadcrumb';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { TagSelector } from '@/components/tags/tag-selector';
+import { NoteExpirationSelector } from '@/components/notes/note-expiration-selector';
 import { updateNoteWithTags } from '@/lib/notes/actions';
 import { AIChatButton } from '@/components/ai-chat/ai-chat-button';
 import { AIChatPanel } from '@/components/ai-chat/ai-chat-panel';
@@ -20,6 +21,8 @@ import { LogoutButton } from '@/components/auth/logout-button';
 import type { EditorJSContent } from '@/lib/notes/types';
 import type { Note } from '@/lib/supabase/types';
 import { createClient } from '@/lib/supabase/client';
+import type { NoteEditorRef } from '@/components/notes/note-editor';
+import { getConversationHistory } from '@/lib/ai-chat/client';
 
 // Types for the joined data from Supabase
 interface NoteTagJoin {
@@ -32,6 +35,7 @@ interface NoteTagJoin {
 
 interface NoteWithTags extends Note {
   note_tags: NoteTagJoin[] | null;
+  expires_at: string | null;
 }
 
 const NoteEditor = dynamic(
@@ -48,11 +52,14 @@ export default function EditNotePage() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState<EditorJSContent | null>(null);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [expiresAt, setExpiresAt] = useState<Date | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
+  const [hasChatContent, setHasChatContent] = useState(false);
+  const editorRef = useRef<NoteEditorRef>(null);
 
   // Load note on mount
   useEffect(() => {
@@ -80,12 +87,33 @@ export default function EditNotePage() {
       setNote(noteData);
       setTitle(noteData.title);
       setContent(noteData.content);
+      
+      // Set expiration date if it exists
+      if (noteData.expires_at) {
+        setExpiresAt(new Date(noteData.expires_at));
+      } else {
+        setExpiresAt(null);
+      }
 
       // Extract tag IDs from the loaded note
       const tagIds = (noteData.note_tags || [])
         .map((nt: NoteTagJoin) => nt.tags?.id)
         .filter((id): id is string => Boolean(id));
       setSelectedTagIds(tagIds);
+
+      // Check if note has chat content
+      try {
+        const conversations = await getConversationHistory(noteId);
+        const hasContent = conversations.length > 0;
+        setHasChatContent(hasContent);
+        // Auto-open chat box if it has content
+        if (hasContent) {
+          setShowAIChat(true);
+        }
+      } catch (err) {
+        console.error('Failed to check conversation history:', err);
+        setHasChatContent(false);
+      }
 
       setIsLoading(false);
     }
@@ -95,7 +123,7 @@ export default function EditNotePage() {
 
   // Auto-save with debounce
   const debouncedSave = useDebouncedCallback(
-    async (newTitle: string, newContent: EditorJSContent | null, newTagIds?: string[]) => {
+    async (newTitle: string, newContent: EditorJSContent | null, newTagIds?: string[], newExpiresAt?: Date | null) => {
       if (!noteId) return;
 
       setSaveStatus('saving');
@@ -105,6 +133,7 @@ export default function EditNotePage() {
           title: newTitle,
           content: newContent ?? undefined,
           tagIds: newTagIds,
+          expires_at: newExpiresAt,
         });
 
         if (result.success) {
@@ -125,13 +154,18 @@ export default function EditNotePage() {
 
   const handleTitleChange = useCallback((newTitle: string) => {
     setTitle(newTitle);
-    debouncedSave(newTitle, content, selectedTagIds);
-  }, [content, selectedTagIds, debouncedSave]);
+    debouncedSave(newTitle, content, selectedTagIds, expiresAt);
+  }, [content, selectedTagIds, expiresAt, debouncedSave]);
 
   const handleContentChange = useCallback((newContent: EditorJSContent) => {
     setContent(newContent);
-    debouncedSave(title, newContent, selectedTagIds);
-  }, [title, selectedTagIds, debouncedSave]);
+    debouncedSave(title, newContent, selectedTagIds, expiresAt);
+  }, [title, selectedTagIds, expiresAt, debouncedSave]);
+
+  const handleExpirationChange = useCallback((newExpiresAt: Date | null) => {
+    setExpiresAt(newExpiresAt);
+    debouncedSave(title, content, selectedTagIds, newExpiresAt);
+  }, [title, content, selectedTagIds, debouncedSave]);
 
   const handleManualSave = async () => {
     if (!noteId) return;
@@ -143,6 +177,7 @@ export default function EditNotePage() {
         title,
         content: content ?? undefined,
         tagIds: selectedTagIds,
+        expires_at: expiresAt,
       });
 
       if (result.success) {
@@ -183,11 +218,6 @@ export default function EditNotePage() {
             Smart Notes
           </h1>
           <div className="flex items-center gap-4">
-            <Link href="/dashboard">
-              <Button variant="outline" size="sm">
-                Dashboard
-              </Button>
-            </Link>
             <Link href="/notes">
               <Button variant="outline" size="sm">
                 My Notes
@@ -220,10 +250,12 @@ export default function EditNotePage() {
               showDelete={true}
               onDelete={() => setShowDeleteDialog(true)}
             />
-            <AIChatButton
-              onClick={() => setShowAIChat(true)}
-              disabled={isLoading}
-            />
+            {hasChatContent && (
+              <AIChatButton
+                onClick={() => setShowAIChat(!showAIChat)}
+                disabled={isLoading}
+              />
+            )}
           </div>
         </div>
 
@@ -257,7 +289,15 @@ export default function EditNotePage() {
             />
           </div>
 
+          <div className="max-w-md">
+            <NoteExpirationSelector
+              expiresAt={expiresAt}
+              onChange={handleExpirationChange}
+            />
+          </div>
+
           <NoteEditor
+            ref={editorRef}
             initialContent={note.content}
             onChange={handleContentChange}
           />
@@ -269,6 +309,17 @@ export default function EditNotePage() {
             <AIChatPanel
               noteId={noteId}
               onClose={() => setShowAIChat(false)}
+              onInsertMessage={(message) => {
+                editorRef.current?.appendText(message);
+              }}
+              onConversationCreated={() => {
+                // Update hasChatContent when a new conversation is created
+                setHasChatContent(true);
+              }}
+              onHistoryCleared={() => {
+                // Update hasChatContent when history is cleared
+                setHasChatContent(false);
+              }}
             />
           </div>
         )}

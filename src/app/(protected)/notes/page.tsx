@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -11,11 +11,14 @@ import { SearchInput } from '@/components/notes/search-input';
 import { DateFilter } from '@/components/notes/date-filter';
 import { FilterBar } from '@/components/notes/filter-bar';
 import { searchNotes } from '@/lib/notes/client-queries';
-import { getNotesWithTags } from '@/lib/tags/client-queries';
+import { getNotesWithTags, getTags } from '@/lib/tags/client-queries';
 import { Plus, FileText, Grid3X3, List } from 'lucide-react';
-import { LogoutButton } from '@/components/auth/logout-button';
+import { AppHeader } from '@/components/layout/app-header';
+import { useFilterPersistence } from '@/hooks/use-filter-persistence';
 import type { NoteSearchResult, DateFilterState, NoteSearchParams } from '@/lib/search/types';
 import type { EditorJSContent } from '@/lib/notes/types';
+import type { FilterState } from '@/types/filters';
+import type { TagWithCount } from '@/lib/tags/types';
 
 export default function NotesPage() {
   const router = useRouter();
@@ -26,21 +29,111 @@ export default function NotesPage() {
   const [dateFilter, setDateFilter] = useState<DateFilterState>({ preset: 'custom' });
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [tags, setTags] = useState<TagWithCount[]>([]);
 
-  // Initialize selectedTagIds from URL params
+  // Filter persistence hook
+  const { persistedFilters, saveFilters, cookiesEnabled } = useFilterPersistence();
+
+  // Track if we've loaded persisted filters initially
+  const [hasLoadedPersistedFilters, setHasLoadedPersistedFilters] = useState(false);
+  
+  // Ref to track if we're programmatically updating the URL (to prevent loops)
+  const isUpdatingUrlRef = useRef(false);
+
+  // Load persisted filters only on initial mount
   useEffect(() => {
-    const tagParam = searchParams.get('tags');
-    if (tagParam) {
-      const tagIds = tagParam.split(',').filter(Boolean);
-      setSelectedTagIds(tagIds);
-    } else {
-      setSelectedTagIds([]);
+    if (persistedFilters && !hasLoadedPersistedFilters) {
+      // Load tag filters from persisted state
+      if (persistedFilters.tagIds && persistedFilters.tagIds.length > 0) {
+        const tagIds = persistedFilters.tagIds;
+        setSelectedTagIds(tagIds);
+        // Update URL to reflect persisted filters only if different from current
+        const currentTagParam = searchParams.get('tags');
+        const currentTagIds = currentTagParam ? currentTagParam.split(',').filter(Boolean) : [];
+        if (JSON.stringify([...tagIds].sort()) !== JSON.stringify([...currentTagIds].sort())) {
+          // Mark that we're updating URL programmatically
+          isUpdatingUrlRef.current = true;
+          const params = new URLSearchParams();
+          params.set('tags', tagIds.join(','));
+          router.replace(`/notes?${params.toString()}`, { scroll: false });
+          // Reset the flag after a short delay
+          setTimeout(() => {
+            isUpdatingUrlRef.current = false;
+          }, 100);
+        }
+      }
+
+      // Load date filters from persisted state
+      if (persistedFilters.dateFrom || persistedFilters.dateTo) {
+        setDateFilter({
+          preset: 'custom',
+          customFrom: persistedFilters.dateFrom ? new Date(persistedFilters.dateFrom) : undefined,
+          customTo: persistedFilters.dateTo ? new Date(persistedFilters.dateTo) : undefined,
+        });
+      }
+
+      // Load view mode from persisted state
+      if (persistedFilters.viewMode) {
+        setViewMode(persistedFilters.viewMode);
+      }
+
+      setHasLoadedPersistedFilters(true);
     }
-  }, [searchParams]);
+  }, [persistedFilters, hasLoadedPersistedFilters, searchParams, router]);
+
+  // Debounced filter saving to cookies (skip during initial persisted filter load)
+  useEffect(() => {
+    if (!cookiesEnabled) return;
+    // Don't save if we're still loading persisted filters (to prevent loop)
+    if (!hasLoadedPersistedFilters) return;
+
+    const timeoutId = setTimeout(() => {
+      const hasDateFilter = dateFilter.preset === 'custom' && (dateFilter.customFrom || dateFilter.customTo);
+      const hasFilters = selectedTagIds.length > 0 || hasDateFilter;
+
+      const currentFilters: FilterState = {
+        tagIds: selectedTagIds,
+        dateFrom: dateFilter.preset === 'custom' && dateFilter.customFrom
+          ? dateFilter.customFrom.toISOString().split('T')[0] // YYYY-MM-DD format
+          : undefined,
+        dateTo: dateFilter.preset === 'custom' && dateFilter.customTo
+          ? dateFilter.customTo.toISOString().split('T')[0] // YYYY-MM-DD format
+          : undefined,
+        // Only save viewMode when there are actual filters
+        ...(hasFilters ? { viewMode: viewMode } : {}),
+      };
+
+      saveFilters(currentFilters);
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [selectedTagIds, dateFilter, viewMode, cookiesEnabled, saveFilters, hasLoadedPersistedFilters]);
+
+  // Initialize selectedTagIds from URL params (only if URL changed externally, not programmatically)
+  useEffect(() => {
+    // Skip if we're in the middle of a programmatic URL update
+    if (isUpdatingUrlRef.current) {
+      return;
+    }
+
+    const tagParam = searchParams.get('tags');
+    const urlTagIds = tagParam ? tagParam.split(',').filter(Boolean) : [];
+    
+    // Only update if the URL params differ from current state
+    const currentTagIdsStr = JSON.stringify([...selectedTagIds].sort());
+    const urlTagIdsStr = JSON.stringify([...urlTagIds].sort());
+    
+    if (currentTagIdsStr !== urlTagIdsStr) {
+      setSelectedTagIds(urlTagIds);
+    }
+  }, [searchParams, selectedTagIds]);
 
   // Update URL when selectedTagIds change
   const handleTagChange = (tagIds: string[]) => {
     setSelectedTagIds(tagIds);
+
+    // Mark that we're updating URL programmatically
+    isUpdatingUrlRef.current = true;
 
     // Update URL
     const params = new URLSearchParams();
@@ -50,6 +143,13 @@ export default function NotesPage() {
 
     const newUrl = params.toString() ? `?${params.toString()}` : '';
     router.replace(`/notes${newUrl}`, { scroll: false });
+
+    // Reset the flag after a short delay to allow URL to update
+    setTimeout(() => {
+      isUpdatingUrlRef.current = false;
+    }, 100);
+
+    // Save filters to cookies (debounced in the effect below)
   };
 
   // Clear search filter
@@ -73,7 +173,22 @@ export default function NotesPage() {
     setSearchQuery('');
     setDateFilter({ preset: 'custom' });
     handleTagChange([]);
+    setViewMode('grid'); // Reset to default view mode
   };
+
+  // Load tags on mount
+  useEffect(() => {
+    const loadTags = async () => {
+      try {
+        const loadedTags = await getTags();
+        setTags(loadedTags);
+      } catch (error) {
+        console.error('Failed to load tags:', error);
+      }
+    };
+
+    loadTags();
+  }, []);
 
   useEffect(() => {
     const loadNotes = async () => {
@@ -152,21 +267,7 @@ export default function NotesPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <header className="bg-white dark:bg-gray-800 shadow">
-        <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
-            Smart Notes
-          </h1>
-          <div className="flex items-center gap-4">
-            <Link href="/dashboard">
-              <Button variant="outline" size="sm">
-                Dashboard
-              </Button>
-            </Link>
-            <LogoutButton />
-          </div>
-        </div>
-      </header>
+      <AppHeader currentPage="notes" />
       <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Main Content */}
@@ -241,6 +342,7 @@ export default function NotesPage() {
                 searchQuery={searchQuery}
                 dateFilter={dateFilter}
                 selectedTagIds={selectedTagIds}
+                tags={tags}
                 onClearSearch={handleClearSearch}
                 onClearDateFilter={handleClearDateFilter}
                 onClearTagFilter={handleClearTagFilter}

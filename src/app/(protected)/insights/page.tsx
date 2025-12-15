@@ -9,7 +9,7 @@ import { InsightsFilter } from './components/insights-filter';
 import { NotePreviewList } from './components/note-preview-list';
 import { AIQuery } from './components/ai-query';
 import { AIResponse } from './components/ai-response';
-import { LogoutButton } from '@/components/auth/logout-button';
+import { AppHeader } from '@/components/layout/app-header';
 import type { NoteFilterCriteria } from '@/lib/ai-insights/types';
 import type { AIQueryResponse, AIQueryError } from '@/lib/ai-insights/types';
 import type { NoteSearchResult } from '@/lib/search/types';
@@ -104,27 +104,7 @@ export default function InsightsPage() {
     <ErrorBoundary>
       <Suspense fallback={<LoadingState message="Loading AI Insights..." />}>
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-          {/* Header */}
-          <header className="bg-white dark:bg-gray-800 shadow">
-            <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-              <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Smart Notes
-              </h1>
-              <div className="flex items-center gap-4">
-                <Link href="/dashboard">
-                  <Button variant="outline" size="sm">
-                    Dashboard
-                  </Button>
-                </Link>
-                <Link href="/notes">
-                  <Button variant="outline" size="sm">
-                    My Notes
-                  </Button>
-                </Link>
-                <LogoutButton variant="outline" size="sm" />
-              </div>
-            </div>
-          </header>
+          <AppHeader currentPage="insights" />
 
           {/* Main Content */}
           <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">

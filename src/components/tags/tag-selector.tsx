@@ -4,11 +4,16 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Check, ChevronsUpDown, X, Plus } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Check, ChevronsUpDown, X, Plus, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getTags } from '@/lib/tags/client-queries';
 import { TagBadge } from '@/components/tags/tag-badge';
-import type { TagWithCount } from '@/lib/tags/types';
+import { generateRandomColor, validateTagName, validateHexColor } from '@/lib/tags/utils';
+import type { TagWithCount, Tag } from '@/lib/tags/types';
 
 interface TagSelectorProps {
   selectedTagIds: string[];
@@ -21,6 +26,11 @@ export function TagSelector({ selectedTagIds, onChange, placeholder = "Select ta
   const [open, setOpen] = useState(false);
   const [availableTags, setAvailableTags] = useState<TagWithCount[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [newTagName, setNewTagName] = useState('');
+  const [newTagColor, setNewTagColor] = useState(generateRandomColor());
+  const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadTags = async () => {
@@ -54,6 +64,67 @@ export function TagSelector({ selectedTagIds, onChange, placeholder = "Select ta
 
   const handleClearAll = () => {
     onChange([]);
+  };
+
+  const handleCreateTag = async () => {
+    setCreateError(null);
+    
+    // Validate name
+    const nameValidation = validateTagName(newTagName);
+    if (!nameValidation.valid) {
+      setCreateError(nameValidation.error || 'Invalid tag name');
+      return;
+    }
+
+    // Validate color
+    if (!validateHexColor(newTagColor)) {
+      setCreateError('Invalid color format');
+      return;
+    }
+
+    setIsCreating(true);
+
+    try {
+      const response = await fetch('/api/tags', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: newTagName.trim(),
+          color: newTagColor,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        // Reload tags
+        const tags = await getTags();
+        setAvailableTags(tags);
+        
+        // Automatically select the newly created tag
+        if (result.tag) {
+          onChange([...selectedTagIds, result.tag.id]);
+        }
+        
+        // Reset form and close dialog
+        setNewTagName('');
+        setNewTagColor(generateRandomColor());
+        setShowCreateDialog(false);
+        setOpen(false);
+      } else {
+        setCreateError(result.error || 'Failed to create tag');
+      }
+    } catch (error) {
+      setCreateError('An unexpected error occurred');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleRandomColor = () => {
+    setNewTagColor(generateRandomColor());
   };
 
   return (
@@ -120,7 +191,7 @@ export function TagSelector({ selectedTagIds, onChange, placeholder = "Select ta
                     <div className="py-6 text-center text-sm">Loading tags...</div>
                   ) : availableTags.length === 0 ? (
                     <div className="py-6 text-center text-sm">
-                      No tags available. <a href="/tags" className="text-primary underline">Create your first tag</a>
+                      No tags available. <a href="/settings/tags" className="text-primary underline">Create your first tag</a>
                     </div>
                   ) : (
                     <div className="py-6 text-center text-sm">No tags found.</div>
@@ -150,11 +221,15 @@ export function TagSelector({ selectedTagIds, onChange, placeholder = "Select ta
                   })}
                 </CommandGroup>
                 <CommandGroup>
-                  <CommandItem asChild>
-                    <a href="/tags" className="flex items-center gap-2 text-primary">
-                      <Plus className="h-4 w-4" />
-                      Create new tag
-                    </a>
+                  <CommandItem
+                    onSelect={() => {
+                      setShowCreateDialog(true);
+                      setOpen(false);
+                    }}
+                    className="flex items-center gap-2 text-primary cursor-pointer"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Create new tag
                   </CommandItem>
                 </CommandGroup>
               </CommandList>
@@ -166,6 +241,103 @@ export function TagSelector({ selectedTagIds, onChange, placeholder = "Select ta
       <p className="text-xs text-muted-foreground">
         Tags help organize your notes. You can select multiple tags.
       </p>
+
+      {/* Create Tag Dialog */}
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Tag</DialogTitle>
+            <DialogDescription>
+              Create a new tag to organize your notes. The tag will be automatically added to this note.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {createError && (
+              <Alert variant="destructive">
+                <AlertDescription>{createError}</AlertDescription>
+              </Alert>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="tag-name">Tag Name</Label>
+              <Input
+                id="tag-name"
+                value={newTagName}
+                onChange={(e) => setNewTagName(e.target.value)}
+                placeholder="Enter tag name"
+                maxLength={50}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !isCreating) {
+                    e.preventDefault();
+                    handleCreateTag();
+                  }
+                }}
+              />
+              <p className="text-xs text-muted-foreground">
+                Tag name must be 1-50 characters long
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="tag-color">Color</Label>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    id="tag-color"
+                    value={newTagColor}
+                    onChange={(e) => setNewTagColor(e.target.value)}
+                    className="h-10 w-20 rounded border border-gray-300 dark:border-gray-600 cursor-pointer"
+                  />
+                  <span className="text-sm text-muted-foreground">{newTagColor}</span>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRandomColor}
+                >
+                  Random
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setShowCreateDialog(false);
+                  setNewTagName('');
+                  setNewTagColor(generateRandomColor());
+                  setCreateError(null);
+                }}
+                disabled={isCreating}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleCreateTag}
+                disabled={isCreating || !newTagName.trim()}
+              >
+                {isCreating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create Tag
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

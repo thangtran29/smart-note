@@ -20,18 +20,21 @@ export interface Note {
   content: EditorJSContent | null;
   created_at: string;
   updated_at: string;
+  expires_at: string | null;
 }
 
 // For creating a new note
 export interface CreateNoteInput {
   title?: string;
   content?: EditorJSContent;
+  expires_at?: Date | string | null;
 }
 
 // For updating an existing note
 export interface UpdateNoteInput {
   title?: string;
   content?: EditorJSContent;
+  expires_at?: Date | string | null;
 }
 
 // Note with computed preview for list display
