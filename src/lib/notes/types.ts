@@ -12,6 +12,11 @@ export interface EditorJSContent {
   version: string;
 }
 
+// NoteEditor ref interface - moved here to avoid SSR issues
+export interface NoteEditorRef {
+  appendText: (text: string) => Promise<void>;
+}
+
 // Note entity
 export interface Note {
   id: string;
@@ -21,6 +26,9 @@ export interface Note {
   created_at: string;
   updated_at: string;
   expires_at: string | null;
+  // Encryption metadata (computed, not stored in notes table)
+  is_protected?: boolean;  // True if note has encryption variants
+  variant_count?: number;  // Number of encryption variants (for UI, not security-sensitive)
 }
 
 // For creating a new note

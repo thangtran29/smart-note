@@ -108,6 +108,37 @@ export interface Database {
         Update: never; // Junction table, no updates
         Relationships: [];
       };
+      note_encryption_variants: {
+        Row: {
+          id: string;
+          note_id: string;
+          encrypted_content: string;
+          salt: string;         // BYTEA returned as hex string
+          iv: string;          // BYTEA returned as hex string
+          kdf_type: 'pbkdf2';
+          kdf_iterations: number;
+          kdf_hash: 'SHA-256';
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          note_id: string;
+          encrypted_content: string;
+          salt: string;        // BYTEA as hex string
+          iv: string;          // BYTEA as hex string
+          kdf_type?: 'pbkdf2';
+          kdf_iterations: number;
+          kdf_hash?: 'SHA-256';
+          created_at?: string;
+        };
+        Update: {
+          encrypted_content?: string;
+          salt?: string;
+          iv?: string;
+          kdf_iterations?: number;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

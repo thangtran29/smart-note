@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -43,21 +42,18 @@ export function SignupForm() {
     setIsLoading(true);
 
     try {
-      const supabase = createClient();
-      const { error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
       });
 
-      if (signUpError) {
-        // Map Supabase errors to user-friendly messages
-        if (signUpError.message.includes('already registered')) {
-          setError('An account with this email already exists');
-        } else if (signUpError.message.includes('password')) {
-          setError('Password must be at least 8 characters long');
-        } else {
-          setError(signUpError.message);
-        }
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || 'An unexpected error occurred');
         return;
       }
 

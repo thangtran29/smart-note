@@ -6,16 +6,12 @@ import Header from '@editorjs/header';
 import List from '@editorjs/list';
 import Code from '@editorjs/code';
 import Quote from '@editorjs/quote';
-import type { EditorJSContent } from '@/lib/notes/types';
+import type { EditorJSContent, NoteEditorRef } from '@/lib/notes/types';
 
 interface NoteEditorProps {
   initialContent?: EditorJSContent | null;
   onChange?: (content: EditorJSContent) => void;
   readOnly?: boolean;
-}
-
-export interface NoteEditorRef {
-  appendText: (text: string) => Promise<void>;
 }
 
 export const NoteEditor = forwardRef<NoteEditorRef, NoteEditorProps>(

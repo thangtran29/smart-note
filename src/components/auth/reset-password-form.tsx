@@ -40,19 +40,18 @@ export function ResetPasswordForm() {
     setIsLoading(true);
 
     try {
-      const supabase = createClient();
-      const { error: updateError } = await supabase.auth.updateUser({
-        password,
+      const response = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ password }),
       });
 
-      if (updateError) {
-        if (updateError.message.includes('same')) {
-          setError('New password must be different from your current password');
-        } else if (updateError.message.includes('expired') || updateError.message.includes('invalid')) {
-          setError('This reset link has expired. Please request a new one.');
-        } else {
-          setError(updateError.message);
-        }
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || 'Failed to update password');
         return;
       }
 

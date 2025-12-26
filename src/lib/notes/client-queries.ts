@@ -1,50 +1,39 @@
-import { createClient } from '@/lib/supabase/client';
 import type { Note } from '@/lib/supabase/types';
 import type { NoteSearchParams, NoteSearchResponse } from '@/lib/search/types';
+import type { NoteEncryptionVariant } from './encryption/types';
 
 export async function getNotes(): Promise<Note[]> {
-  const supabase = createClient();
-  
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return [];
-  }
+  try {
+    const response = await fetch('/api/notes/list');
+    
+    if (!response.ok) {
+      console.error('Error fetching notes:', response.statusText);
+      return [];
+    }
 
-  const { data, error } = await supabase
-    .from('notes')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('updated_at', { ascending: false });
-
-  if (error) {
+    const data = await response.json();
+    return data.notes ?? [];
+  } catch (error) {
     console.error('Error fetching notes:', error);
     return [];
   }
-
-  return data ?? [];
 }
 
 export async function getNote(id: string): Promise<Note | null> {
-  const supabase = createClient();
-  
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return null;
-  }
+  try {
+    const response = await fetch(`/api/notes/${id}`);
+    
+    if (!response.ok) {
+      console.error('Error fetching note:', response.statusText);
+      return null;
+    }
 
-  const { data, error } = await supabase
-    .from('notes')
-    .select('*')
-    .eq('id', id)
-    .eq('user_id', user.id)
-    .single();
-
-  if (error) {
+    const data = await response.json();
+    return data.note ?? null;
+  } catch (error) {
     console.error('Error fetching note:', error);
     return null;
   }
-
-  return data;
 }
 
 export async function searchNotes(params: NoteSearchParams): Promise<NoteSearchResponse> {
@@ -62,4 +51,25 @@ export async function searchNotes(params: NoteSearchParams): Promise<NoteSearchR
   }
 
   return response.json();
+}
+
+export async function getNoteVariants(noteId: string): Promise<{ success: true; variants: NoteEncryptionVariant[]; realVariantCount?: number } | { success: false; error: string }> {
+  try {
+    const response = await fetch(`/api/notes/${noteId}/variants`);
+    
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      return { success: false, error: data.error || 'Unable to unlock content' };
+    }
+
+    const data = await response.json();
+    return { 
+      success: true, 
+      variants: data.variants,
+      realVariantCount: data.realVariantCount // Real count from database (not including fake variants)
+    };
+  } catch (error) {
+    console.error('Error fetching variants:', error);
+    return { success: false, error: 'Unable to unlock content' };
+  }
 }
